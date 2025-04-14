@@ -1,0 +1,28 @@
+# Virtual environment
+venv/
+env/
+*.pyc
+**/__pycache__/
+
+# Backup directories
+*_backup/
+
+# Environment files
+.env
+
+# Model files
+*.pt
+
+# Database
+*.db
+
+# Package files
+*.tar.gz
+
+# IDE settings
+.vscode/
+.idea/
+*.code-workspace
+
+# Logs
+*.log
