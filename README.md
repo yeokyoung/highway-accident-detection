@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # 고속도로 CCTV 사고 감지 시스템
 
 ## 개요
@@ -33,3 +34,6 @@ cp yolov8n.pt models/
 # 서버 실행
 source venv/bin/activate
 python -m app.main
+=======
+# highway-accident-detection
+>>>>>>> a248404285680736338b8d62f1c5151299ba1313
