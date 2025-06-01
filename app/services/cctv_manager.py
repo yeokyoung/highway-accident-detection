@@ -5,24 +5,80 @@ import asyncio
 import time
 from app.config import settings
 
+# cctv_manager.py에 상황 인식 기능 추가
+
 class CCTVManager:
-    """CCTV 스트림 관리 클래스"""
-    
     def __init__(self):
-        self.active_streams = {}  # 활성 CCTV 스트림 추적
-        self.stream_info = {}  # CCTV 정보 캐싱
+        # 기존 초기화 코드 유지
+        self.active_streams = {}
+        self.stream_info = {}
         
-        # 초기화 시 테스트 CCTV 정보 추가
-        self.stream_info["test"] = {
-            "id": "test",
-            "name": "테스트 CCTV",
-            "url": "",  # 비어있으면 로컬 비디오 사용
-            "location": "테스트 위치",
-            "coordinates": {
-                "latitude": 0,
-                "longitude": 0
+        # 카메라 상태 및 상황 관리 추가
+        self.camera_states = {}  # 카메라별 상태 정보 저장
+    
+    async def analyze_camera_state(self, cctv_id, frame):
+        """카메라 상태(줌 레벨, 움직임 등) 분석"""
+        if cctv_id not in self.camera_states:
+            self.camera_states[cctv_id] = {
+                'prev_frame': None,
+                'zoom_level': 1.0,
+                'movement': 0.0,
+                'scene_type': 'normal'
             }
-        }
+        
+        state = self.camera_states[cctv_id]
+        
+        # 이전 프레임이 있으면 움직임 분석
+        if state['prev_frame'] is not None:
+            # 카메라 움직임 감지
+            movement = self._detect_camera_movement(state['prev_frame'], frame)
+            state['movement'] = movement
+            
+            # 줌 레벨 변화 감지
+            zoom_change = self._detect_zoom_change(state['prev_frame'], frame)
+            state['zoom_level'] *= (1 + zoom_change)
+            
+            # 장면 유형 분류
+            state['scene_type'] = self._classify_scene(frame, movement, state['zoom_level'])
+        
+        # 현재 프레임 저장
+        state['prev_frame'] = frame.copy()
+        
+        return state
+    
+    def _detect_camera_movement(self, prev_frame, curr_frame):
+        """카메라 움직임 감지 (옵티컬 플로우 활용)"""
+        # 이미지 크기 축소로 계산 속도 향상
+        prev_small = cv2.resize(prev_frame, (320, 180))
+        curr_small = cv2.resize(curr_frame, (320, 180))
+        
+        # 그레이스케일 변환
+        prev_gray = cv2.cvtColor(prev_small, cv2.COLOR_BGR2GRAY)
+        curr_gray = cv2.cvtColor(curr_small, cv2.COLOR_BGR2GRAY)
+        
+        # 옵티컬 플로우 계산
+        flow = cv2.calcOpticalFlowFarneback(prev_gray, curr_gray, None, 0.5, 3, 15, 3, 5, 1.2, 0)
+        
+        # 움직임 크기 계산
+        magnitude, _ = cv2.cartToPolar(flow[..., 0], flow[..., 1])
+        mean_magnitude = np.mean(magnitude)
+        
+        return mean_magnitude
+    
+    def _detect_zoom_change(self, prev_frame, curr_frame):
+        """줌 레벨 변화 감지"""
+        # SIFT 또는 SURF 특징점 추출 및 매칭으로 구현 가능
+        # 간단한 구현을 위해 더미 값 반환
+        return 0.0
+    
+    def _classify_scene(self, frame, movement, zoom_level):
+        """장면 유형 분류"""
+        if movement > 5.0:
+            return 'camera_moving'
+        elif zoom_level > 1.5:
+            return 'zoomed_in'
+        else:
+            return 'normal'
         
     async def get_cctv_streams(self, region: Optional[str] = None) -> List[Dict[str, Any]]:
         """ITS API에서 CCTV 스트림 목록 가져오기"""

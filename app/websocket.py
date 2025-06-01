@@ -1,9 +1,8 @@
 #websocket.py
-from fastapi import WebSocket, WebSocketDisconnect
+from typing import List
+from fastapi import WebSocket
 import json
-from typing import Dict, List, Any
 
-# 클라이언트 연결 관리
 class ConnectionManager:
     def __init__(self):
         self.active_connections: List[WebSocket] = []
@@ -15,13 +14,15 @@ class ConnectionManager:
     def disconnect(self, websocket: WebSocket):
         self.active_connections.remove(websocket)
 
-    async def broadcast(self, message: Dict[str, Any]):
+    async def broadcast(self, message: dict):
         for connection in self.active_connections:
-            await connection.send_text(json.dumps(message))
+            try:
+                await connection.send_json(message)
+            except:
+                pass
 
-# 연결 관리자 인스턴스 생성
 manager = ConnectionManager()
 
-# 다른 서비스에서 호출하여 클라이언트에 알림을 보내는 함수
-async def notify_clients(message: Dict[str, Any]):
+async def notify_clients(message: dict):
+    """모든 연결된 클라이언트에게 메시지 전송"""
     await manager.broadcast(message)

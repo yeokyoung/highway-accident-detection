@@ -1,9 +1,12 @@
+#app/routers/cctv.py
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 import requests
 import json
+import os
 from typing import List, Dict, Any, Optional
+from fastapi.responses import HTMLResponse, FileResponse
 from app.config import settings
-from app.services.accident_detection import start_detection, stop_detection
+from app.services.accident_detection import start_detection, stop_detection, get_test_data
 from app.services.cctv_manager import cctv_manager
 
 router = APIRouter(
@@ -158,3 +161,226 @@ async def get_active_monitors():
     현재 활성 상태인 모니터링 작업 목록을 반환합니다.
     """
     return active_monitors
+
+# 추가: 테스트 모니터링 엔드포인트 (GET 메서드)
+@router.get("/monitor/test")
+async def test_monitor():
+    """
+    모니터링 테스트 페이지를 반환합니다.
+    """
+    # HTML 파일 반환
+    try:
+        # static 폴더에서 monitor.html 파일 찾기
+        html_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static", "monitor.html")
+        if os.path.exists(html_file):
+            return FileResponse(html_file)
+        else:
+            # HTML 파일이 없으면 대체 HTML 생성
+            return generate_monitor_html()
+    except Exception as e:
+        # 오류 발생시 테스트 데이터 반환
+        test_data = get_test_data()
+        return test_data
+
+def generate_monitor_html():
+    """
+    모니터링 페이지용 HTML을 생성합니다.
+    """
+    html_content = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>고속도로 사고 감지 실시간 모니터링</title>
+        <meta charset="UTF-8">
+        <style>
+            body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f5f5f5; }
+            h1 { color: #333; }
+            .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+            .btn { padding: 8px 16px; background-color: #4CAF50; color: white; border: none; cursor: pointer; margin-right: 10px; }
+            .btn:hover { background-color: #45a049; }
+            .btn-danger { background-color: #f44336; }
+            .btn-danger:hover { background-color: #d32f2f; }
+            .status { display: flex; align-items: center; }
+            .status-indicator { width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; }
+            .connected { background-color: green; }
+            .disconnected { background-color: red; }
+            .alerts { margin-top: 20px; }
+            .alert-item { background-color: #ffdddd; padding: 15px; margin-bottom: 10px; border-radius: 5px; }
+            .alert-title { font-weight: bold; color: #d33; margin: 0 0 5px 0; }
+            .alert-details { margin: 5px 0; }
+            .log-window { background-color: #000; color: #fff; padding: 10px; height: 300px; overflow-y: auto; font-family: monospace; margin-left: 20px; }
+            .control-panel { margin-bottom: 20px; }
+        </style>
+    </head>
+    <body>
+        <h1>고속도로 사고 감지 실시간 모니터링</h1>
+        
+        <div class="control-panel">
+            <button id="connect-btn" class="btn">웹소켓 연결</button>
+            <button id="disconnect-btn" class="btn btn-danger">연결 끊기</button>
+            <button id="test-alert-btn" class="btn">테스트 알림 생성</button>
+        </div>
+        
+        <div class="header">
+            <div class="status">
+                <div id="status-indicator" class="status-indicator disconnected"></div>
+                <span id="status-text">상태: 연결 끊김</span>
+            </div>
+        </div>
+        
+        <div class="container" style="display: flex;">
+            <div class="alerts" style="flex: 1;">
+                <h2>실시간 알림</h2>
+                <div id="alerts-container">
+                    <!-- 여기에 알림이 추가됩니다 -->
+                </div>
+            </div>
+            
+            <div class="log-window" style="flex: 1;">
+                <div id="log-container">
+                    <!-- 여기에 로그가 추가됩니다 -->
+                </div>
+            </div>
+        </div>
+        
+        <script>
+            let socket;
+            let connected = false;  // 초기 상태는 연결 끊김
+            const connectBtn = document.getElementById('connect-btn');
+            const disconnectBtn = document.getElementById('disconnect-btn');
+            const testAlertBtn = document.getElementById('test-alert-btn');
+            const statusIndicator = document.getElementById('status-indicator');
+            const statusText = document.getElementById('status-text');
+            const alertsContainer = document.getElementById('alerts-container');
+            const logContainer = document.getElementById('log-container');
+            
+            function connect() {
+                if (connected) {
+                    logMessage("이미 연결되어 있습니다.");
+                    return;
+                }
+                
+                // 웹소켓 연결
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const wsUrl = `${protocol}//${window.location.host}/ws`;
+                logMessage(`웹소켓 연결 시도: ${wsUrl}`);
+                
+                try {
+                    socket = new WebSocket(wsUrl);
+                    
+                    socket.onopen = function(e) {
+                        logMessage("웹소켓 연결 성공");
+                        setConnectedStatus(true);
+                    };
+                    
+                    socket.onmessage = function(event) {
+                        const data = JSON.parse(event.data);
+                        logMessage(`메시지 수신: ${JSON.stringify(data)}`);
+                        
+                        if (data.type === "accident_detected") {
+                            addAlert(data.data);
+                        }
+                    };
+                    
+                    socket.onclose = function(event) {
+                        logMessage("웹소켓 연결 종료");
+                        setConnectedStatus(false);
+                    };
+                    
+                    socket.onerror = function(error) {
+                        logMessage(`웹소켓 오류 발생`);
+                        setConnectedStatus(false);
+                    };
+                } catch (error) {
+                    logMessage(`웹소켓 연결 실패: ${error.message}`);
+                    setConnectedStatus(false);
+                }
+            }
+            
+            function disconnect() {
+                if (!connected || !socket) {
+                    logMessage("연결되어 있지 않습니다.");
+                    return;
+                }
+                
+                logMessage("웹소켓 연결 종료 중...");
+                socket.close();
+                setConnectedStatus(false);
+            }
+            
+            function setConnectedStatus(isConnected) {
+                connected = isConnected;
+                if (isConnected) {
+                    connectBtn.disabled = true;
+                    disconnectBtn.disabled = false;
+                    statusIndicator.className = "status-indicator connected";
+                    statusText.textContent = "상태: 연결됨";
+                    logMessage("연결 상태로 변경됨");
+                } else {
+                    connectBtn.disabled = false;
+                    disconnectBtn.disabled = true;
+                    statusIndicator.className = "status-indicator disconnected";
+                    statusText.textContent = "상태: 연결 끊김";
+                    logMessage("연결 끊김 상태로 변경됨");
+                    socket = null;
+                }
+            }
+            
+            function addAlert(data) {
+                const alertItem = document.createElement('div');
+                alertItem.className = 'alert-item';
+                
+                const now = new Date();
+                const timestamp = data.detected_at ? new Date(data.detected_at) : now;
+                const formattedTime = `${timestamp.getFullYear()}. ${timestamp.getMonth() + 1}. ${timestamp.getDate()}. ${timestamp.getHours()}:${timestamp.getMinutes()}:${timestamp.getSeconds()}`;
+                
+                alertItem.innerHTML = `
+                    <div class="alert-title">사고 감지!</div>
+                    <div class="alert-details">시간: ${formattedTime}</div>
+                    <div class="alert-details">위치: ${data.location || '테스트 위치'}</div>
+                    <div class="alert-details">CCTV: ${data.cctv_name || '테스트 CCTV'}</div>
+                `;
+                
+                alertsContainer.insertBefore(alertItem, alertsContainer.firstChild);
+                logMessage(`새로운 알림 추가: ${data.id}`);
+            }
+            
+            function createTestAlert() {
+                const testData = {
+                    id: "test_accident_" + Date.now(),
+                    location: "테스트 위치",
+                    cctv_name: "테스트 CCTV",
+                    detected_at: new Date().toISOString()
+                };
+                
+                addAlert(testData);
+                logMessage("테스트 알림이 생성되었습니다.");
+            }
+            
+            function logMessage(message) {
+                const now = new Date();
+                const timestamp = `${now.getHours()}:${now.getMinutes()}:${now.getSeconds()}.${now.getMilliseconds()}`;
+                
+                const logItem = document.createElement('div');
+                logItem.textContent = `[${timestamp}] ${message}`;
+                logContainer.appendChild(logItem);
+                logContainer.scrollTop = logContainer.scrollHeight;
+            }
+            
+            // 버튼 이벤트 리스너
+            connectBtn.addEventListener('click', connect);
+            disconnectBtn.addEventListener('click', disconnect);
+            testAlertBtn.addEventListener('click', createTestAlert);
+            
+            // 초기 상태 설정
+            setConnectedStatus(false);
+            disconnectBtn.disabled = true;
+            
+            // 페이지 로드 시 로그 메시지
+            logMessage("페이지가 로드되었습니다. '웹소켓 연결' 버튼을 클릭하여 연결을 시작하세요.");
+        </script>
+    </body>
+    </html>
+    """
+    
+    return HTMLResponse(content=html_content)

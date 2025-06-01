@@ -2,6 +2,7 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 import os
 from app.database import engine, Base
 from app.routers import accidents, cctv
@@ -40,22 +41,11 @@ app.mount("/static", StaticFiles(directory=os.path.join(os.path.dirname(__file__
 
 @app.get("/")
 async def root():
-    """API 서버 상태 확인"""
-    return {
-        "status": "online",
-        "app_name": settings.APP_NAME,
-        "endpoints": {
-            "accidents": "/accidents",
-            "cctv": "/cctv/streams",
-            "websocket": settings.WEBSOCKET_PATH
-        }
-    }
+    """메인 페이지로 리다이렉트"""
+    return RedirectResponse(url="/static/index.html")
 
 @app.websocket(settings.WEBSOCKET_PATH)
 async def websocket_endpoint(websocket: WebSocket):
-    """
-    웹소켓 연결 처리. 사고 알림 등을 실시간으로 클라이언트에 전달합니다.
-    """
     await manager.connect(websocket)
     try:
         # 연결 성공 메시지
@@ -76,5 +66,10 @@ async def websocket_endpoint(websocket: WebSocket):
         manager.disconnect(websocket)
 
 if __name__ == "__main__":
-    # 개발용 서버 실행
-    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
+    import uvicorn
+    uvicorn.run(
+        "app.main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True
+    )

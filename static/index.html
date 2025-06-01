@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>고속도로 사고 감지 시스템</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 10px;
+            transition: background-color 0.3s;
+        }
+        .btn:hover {
+            background-color: #0056b3;
+        }
+        .btn-success {
+            background-color: #28a745;
+        }
+        .btn-success:hover {
+            background-color: #1e7e34;
+        }
+        .links {
+            text-align: center;
+            margin-top: 30px;
+        }
+        .status {
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚗 고속도로 사고 감지 시스템</h1>
+        
+        <div class="status">
+            <h3>✅ 시스템 상태: 정상 운영 중</h3>
+            <p>실시간 CCTV 모니터링 및 AI 사고 감지 서비스</p>
+        </div>
+
+        <div class="links">
+            <a href="/cctv/streams" class="btn">📹 CCTV 목록 보기</a>
+            <a href="/cctv/monitor/test" class="btn btn-success">🔴 실시간 모니터링</a>
+            <a href="/docs" class="btn">📚 API 문서</a>
+        </div>
+
+        <div style="margin-top: 40px;">
+            <h3>🔧 주요 기능</h3>
+            <ul>
+                <li>실시간 고속도로 CCTV 영상 분석</li>
+                <li>YOLO + DeepSort 기반 차량 추적</li>
+                <li>AI 사고 감지 알고리즘</li>
+                <li>웹소켓 실시간 알림</li>
+                <li>다중 CCTV 동시 모니터링</li>
+            </ul>
+        </div>
+
+        <div style="margin-top: 40px;">
+            <h3>🚀 빠른 시작</h3>
+            <ol>
+                <li><a href="/cctv/streams">CCTV 목록</a>에서 모니터링할 CCTV 선택</li>
+                <li><a href="/cctv/monitor/test">모니터링 페이지</a>에서 실시간 감지 시작</li>
+                <li>웹소켓 연결 후 실시간 알림 확인</li>
+            </ol>
+        </div>
+    </div>
+</body>
+</html>
